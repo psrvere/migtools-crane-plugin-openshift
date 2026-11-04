@@ -12,7 +12,7 @@ This plugin provides transformations for OpenShift-specific resources including:
 - **ServiceAccounts**: Strips default secrets and pull secrets
 - **RoleBindings**: Removes namespace references for ServiceAccount subjects
 - **ImageStreams**: Detects usage (see limitations below)
-- Automatic whiteout of OpenShift-specific resources (Builds, ImageStreamTags, ImageTags)
+- Automatic whiteout of OpenShift-specific resources (`build.openshift.io` Builds, ImageStreamTags, ImageTags). A Build from another API group, such as a Shipwright `shipwright.io` Build, passes through unchanged
 - Optional stripping of default RBAC, CA bundles, and pull secrets
 
 ## Limitations

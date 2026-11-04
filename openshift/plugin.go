@@ -24,6 +24,10 @@ const (
 
 var authorizationGroup = "authorization.openshift.io"
 
+// buildGroup is the API group of OpenShift Builds. Other projects also define a
+// Build kind (Shipwright's shipwright.io Build, for one), and those must pass through.
+var buildGroup = "build.openshift.io"
+
 // OpenShiftTransformPlugin implements transform.Plugin for OpenShift-specific transformations.
 type OpenShiftTransformPlugin struct {
 	Log logrus.FieldLogger
@@ -95,8 +99,13 @@ func (o *OpenShiftTransformPlugin) Run(request transform.PluginRequest) (transfo
 
 	switch u.GetKind() {
 	case "Build":
-		o.log().Info("found build, adding to whiteout")
-		whiteOut = true
+		// An empty group is the legacy OpenShift 3 form of the same resource.
+		if group := u.GroupVersionKind().Group; group == buildGroup || group == "" {
+			o.log().Info("found build, adding to whiteout")
+			whiteOut = true
+		} else {
+			o.log().Infof("Build %s/%s is in group %s, not %s, passing through", u.GetNamespace(), u.GetName(), group, buildGroup)
+		}
 	case "ImageStream":
 		namespace := u.GetNamespace()
 		name := u.GetName()

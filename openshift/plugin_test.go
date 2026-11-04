@@ -257,6 +257,69 @@ func TestConfigMapFiltering(t *testing.T) {
 	}
 }
 
+func TestBuildFiltering(t *testing.T) {
+	tests := []struct {
+		name           string
+		apiVersion     string
+		expectWhiteOut bool
+	}{
+		{
+			name:           "OpenShift Build is whited out",
+			apiVersion:     "build.openshift.io/v1",
+			expectWhiteOut: true,
+		},
+		{
+			name:           "legacy OpenShift Build with no group is whited out",
+			apiVersion:     "v1",
+			expectWhiteOut: true,
+		},
+		{
+			name:           "Shipwright Build passes through",
+			apiVersion:     "shipwright.io/v1beta1",
+			expectWhiteOut: false,
+		},
+		{
+			name:           "Build from any other group passes through",
+			apiVersion:     "example.com/v1alpha1",
+			expectWhiteOut: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			plugin := &OpenShiftTransformPlugin{
+				Log: logrus.New(),
+			}
+
+			resource := &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": tt.apiVersion,
+					"kind":       "Build",
+					"metadata": map[string]interface{}{
+						"name":      "my-build",
+						"namespace": "test-namespace",
+					},
+				},
+			}
+
+			response, err := plugin.Run(transform.PluginRequest{
+				Unstructured: *resource,
+				Extras:       map[string]string{},
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if response.IsWhiteOut != tt.expectWhiteOut {
+				t.Errorf("expected IsWhiteOut=%v, got %v", tt.expectWhiteOut, response.IsWhiteOut)
+			}
+			if len(response.Patches) != 0 {
+				t.Errorf("expected no patches, got %v", response.Patches)
+			}
+		})
+	}
+}
+
 func TestRoleBindingFiltering(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -548,7 +611,7 @@ func TestSecretFiltering(t *testing.T) {
 					"metadata":   metadata,
 					"type":       "kubernetes.io/service-account-token",
 					"data": map[string]interface{}{
-						"token": "ZXhhbXBsZS10b2tlbg==",
+						"token": "ZXhhbXBsZS10b2tlbg==", // base64 of "example-token", notsecret
 					},
 				},
 			}
